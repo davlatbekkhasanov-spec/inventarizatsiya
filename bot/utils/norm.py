@@ -34,6 +34,20 @@ def expected_positions(work_minutes: float, minutes_per_position: float | None =
     return int(math.floor(work_minutes / mpp))
 
 
+def norm_time_minutes(actual: int, minutes_per_position: float) -> float:
+    mpp = minutes_per_position if minutes_per_position > 0 else 3.0
+    return max(0.0, actual * mpp)
+
+
+def time_saved_minutes(actual: int, work_minutes: float, minutes_per_position: float) -> float:
+    return max(0.0, norm_time_minutes(actual, minutes_per_position) - work_minutes)
+
+
+def kaizen_points(saved_minutes: float, minutes_per_position: float) -> int:
+    mpp = minutes_per_position if minutes_per_position > 0 else 3.0
+    return int(saved_minutes // mpp) if mpp > 0 else 0
+
+
 def evaluate_norm(
     actual: int,
     work_minutes: float,

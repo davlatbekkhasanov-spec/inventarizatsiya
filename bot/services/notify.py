@@ -6,10 +6,12 @@ from aiogram import Bot
 from aiogram.exceptions import TelegramAPIError
 
 from bot.config import get_settings
-from bot.utils.norm import NormStatus
+from bot.utils.norm import NormStatus, kaizen_points, norm_time_minutes, time_saved_minutes
 from bot.utils.time_fmt import fmt_datetime, fmt_hm, fmt_minutes
 
 log = logging.getLogger(__name__)
+
+_SEP = "─────────────────"
 
 
 async def send_group(bot: Bot, text: str) -> bool:
@@ -28,26 +30,49 @@ async def send_group(bot: Bot, text: str) -> bool:
 def start_message(*, name: str, started_at) -> str:
     return (
         "🚀 <b>Mesta boshlandi</b>\n\n"
-        f"Xodim: <b>{name}</b>\n"
-        f"Boshlangan vaqt: <b>{fmt_hm(started_at)}</b>"
+        f"👤 <b>{name}</b>\n"
+        f"🕐 <b>{fmt_hm(started_at)}</b>"
     )
 
 
 def pause_message(*, name: str) -> str:
-    return f"⏸ <b>Pauza</b>\n\nXodim: <b>{name}</b>"
+    return f"⏸ <b>Pauza</b>\n\n👤 <b>{name}</b>"
 
 
 def resume_message(*, name: str) -> str:
-    return f"▶️ <b>Davom etdi</b>\n\nXodim: <b>{name}</b>"
+    return f"▶️ <b>Davom etdi</b>\n\n👤 <b>{name}</b>"
 
 
 def work_reminder_message(*, name: str, work_minutes: float) -> str:
     return (
         "⏰ <b>Eslatma</b>\n\n"
-        f"Xodim: <b>{name}</b>\n"
-        f"Ish vaqti: <b>{fmt_minutes(work_minutes)}</b>\n\n"
+        f"👤 <b>{name}</b>\n"
+        f"⏱ Ish vaqti: <b>{fmt_minutes(work_minutes)}</b>\n\n"
         "Tayyor bo'lgach «Yakunlash» tugmasini bosing va pozitsiya sonini kiriting."
     )
+
+
+def _fmt_avg_per_position(work_minutes: float, actual: int) -> str:
+    if actual <= 0:
+        return "—"
+    avg_min = work_minutes / actual
+    if avg_min < 1:
+        sec = max(1, int(round(avg_min * 60)))
+        return f"{sec} soniya"
+    return f"{avg_min:.1f} daqiqa"
+
+
+def _pace_line(*, actual: int, work_minutes: float, mpp: float) -> str:
+    """Ish vaqtiga qarab kutilgan pozitsiya (faqat ma'noli bo'lsa)."""
+    if work_minutes < mpp:
+        return ""
+    expected_pos = int(work_minutes // mpp)
+    diff = actual - expected_pos
+    if diff > 0:
+        return f"📈 Sur'at: <b>+{diff}</b> poz (vaqtga nisbatan ortiqcha)\n"
+    if diff < 0:
+        return f"📉 Sur'at: <b>{diff}</b> poz (vaqtga nisbatan kam)\n"
+    return "📊 Sur'at: vaqt bo'yicha normada\n"
 
 
 def finish_message(
@@ -59,44 +84,51 @@ def finish_message(
     minutes_per_position: float,
 ) -> str:
     mpp = minutes_per_position if minutes_per_position > 0 else 3.0
-    avg = (norm.work_minutes / norm.actual) if norm.actual > 0 else None
-    avg_line = f"{avg:.1f} daqiqa" if avg is not None else "—"
+    actual = norm.actual
+    norm_time = norm_time_minutes(actual, mpp)
+    saved = time_saved_minutes(actual, norm.work_minutes, mpp)
+    waste = norm.waste_minutes
+    pts = kaizen_points(saved, mpp)
 
-    if norm.on_track and norm.waste_minutes < 0.5:
-        norm_line = "✅ <b>Normaga tushdi</b>"
-        waste_line = ""
+    if waste < 0.5:
+        if saved >= mpp:
+            verdict = "✅ <b>Normadan tez — vaqt tejaldi</b>"
+        elif saved > 0.5:
+            verdict = "✅ <b>Normaga tushdi</b>"
+        else:
+            verdict = "✅ <b>Normaga tushdi</b>"
     else:
-        norm_line = "⚠️ <b>Normadan ortda</b>"
-        waste_line = f"\nBekor sarflangan vaqt: <b>{fmt_minutes(norm.waste_minutes)}</b>"
+        verdict = "⚠️ <b>Normadan sekin — ortiqcha vaqt sarflandi</b>"
 
-    if norm.difference > 0:
-        diff_line = f"−{norm.difference} pozitsiya (kamchilik)"
-    elif norm.difference < 0:
-        diff_line = f"+{-norm.difference} pozitsiya (ortiqcha)"
-    else:
-        diff_line = "0 (normada)"
-
-    expected_min = norm.actual * mpp
-    saved_min = max(0.0, expected_min - norm.work_minutes)
-    kaizen_pts = int(saved_min // mpp) if mpp > 0 else 0
-    tejash_line = (
-        f"Tejash: <b>{fmt_minutes(saved_min)}</b> · Kaizen ball: <b>{kaizen_pts}</b>\n\n"
-        if norm.actual > 0
-        else ""
+    norm_block = (
+        f"📐 Kerakli vaqt: <b>{fmt_minutes(norm_time)}</b>\n"
+        f"   <i>({actual} poz × {mpp:g} daq)</i>\n"
+        f"⏱ Sarflangan: <b>{fmt_minutes(norm.work_minutes)}</b>\n\n"
+        f"{verdict}\n"
     )
+
+    if saved >= 0.5:
+        norm_block += f"⚡ Tejash: <b>{fmt_minutes(saved)}</b>\n"
+    if waste >= 0.5:
+        norm_block += f"❌ Ortiqcha vaqt: <b>{fmt_minutes(waste)}</b>\n"
+    if actual > 0 and pts > 0:
+        norm_block += f"🏆 Kaizen ball: <b>+{pts}</b> <i>(har {mpp:g} daq tejash = 1 ball)</i>\n"
+
+    pace = _pace_line(actual=actual, work_minutes=norm.work_minutes, mpp=mpp)
 
     return (
         "📊 <b>Mesta yakunlandi</b>\n\n"
-        f"Xodim: <b>{name}</b>\n\n"
-        f"Boshlanish: <b>{fmt_datetime(started_at)}</b>\n"
-        f"Tugash: <b>{fmt_datetime(finished_at)}</b>\n\n"
-        f"Ish vaqti: <b>{fmt_minutes(norm.work_minutes)}</b>\n"
-        f"Pauza: <b>{fmt_minutes(norm.pause_minutes)}</b>\n\n"
-        f"Bajarilgan pozitsiya: <b>{norm.actual}</b>\n"
-        f"Norma (1 poz = {mpp:g} daq): <b>{norm.expected}</b> kerak edi\n\n"
-        f"{norm_line}\n"
-        f"Farq: <b>{diff_line}</b>"
-        f"{waste_line}\n\n"
-        f"{tejash_line}"
-        f"1 pozitsiyaga o'rtacha: <b>{avg_line}</b>"
+        f"👤 <b>{name}</b>\n"
+        f"🕐 <b>{fmt_hm(started_at)}</b> → <b>{fmt_hm(finished_at)}</b>\n"
+        f"📅 {fmt_datetime(started_at).split(' ', 1)[0]}\n\n"
+        f"{_SEP}\n"
+        "<b>Natija</b>\n"
+        f"📦 Pozitsiya: <b>{actual} ta</b>\n"
+        f"⏱ Ish vaqti: <b>{fmt_minutes(norm.work_minutes)}</b>\n"
+        f"⏸ Pauza: <b>{fmt_minutes(norm.pause_minutes)}</b>\n\n"
+        f"{_SEP}\n"
+        f"<b>Norma</b> <i>(1 poz = {mpp:g} daq)</i>\n"
+        f"{norm_block}\n"
+        f"{pace}"
+        f"📌 1 pozitsiya: o'rtacha <b>{_fmt_avg_per_position(norm.work_minutes, actual)}</b>"
     )
