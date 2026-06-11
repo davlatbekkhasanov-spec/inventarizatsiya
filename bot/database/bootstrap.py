@@ -68,14 +68,15 @@ def run_migrations(url: str) -> None:
     last_err: Exception | None = None
     for connect_args in sync_connect_variants(url):
         try:
-            probe = create_engine(sync, connect_args=connect_args)
-            with probe.connect() as conn:
+            engine = create_engine(sync, connect_args=connect_args)
+            with engine.connect() as conn:
                 conn.execute(text("SELECT 1"))
-            probe.dispose()
             _sync_url = sync
             _sync_connect_args = connect_args
             cfg = Config("alembic.ini")
             command.upgrade(cfg, "head")
+            _apply_schema_patches(engine)
+            engine.dispose()
             log.info("Alembic upgrade head OK")
             return
         except Exception as exc:
@@ -86,8 +87,30 @@ def run_migrations(url: str) -> None:
     engine = create_engine(sync, connect_args=_sync_connect_args or {})
     try:
         Base.metadata.create_all(engine)
+        _apply_schema_patches(engine)
     finally:
         engine.dispose()
+
+
+def _apply_schema_patches(engine) -> None:
+    """Alembic ishlamasa — 002 ustunlari va hub jadvali."""
+    patches = [
+        "ALTER TABLE work_sessions ADD COLUMN IF NOT EXISTS paused_at TIMESTAMPTZ",
+        "ALTER TABLE work_sessions ADD COLUMN IF NOT EXISTS total_pause_sec INTEGER NOT NULL DEFAULT 0",
+        """
+        CREATE TABLE IF NOT EXISTS hub_day_push (
+            day VARCHAR(10) NOT NULL,
+            tg_id BIGINT NOT NULL,
+            summary TEXT NOT NULL,
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            PRIMARY KEY (day, tg_id)
+        )
+        """,
+    ]
+    with engine.begin() as conn:
+        for sql in patches:
+            conn.execute(text(sql.strip()))
+    log.info("Schema patches applied")
 
 
 async def sync_admins_from_env() -> None:
