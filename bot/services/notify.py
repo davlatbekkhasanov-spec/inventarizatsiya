@@ -8,6 +8,7 @@ from aiogram.exceptions import TelegramAPIError
 from bot.config import get_settings
 from bot.utils.norm import NormStatus, kaizen_points, norm_time_minutes, time_saved_minutes
 from bot.utils.time_fmt import fmt_datetime, fmt_hm, fmt_minutes
+from bot.utils.visual import progress_bar
 
 log = logging.getLogger(__name__)
 
@@ -52,6 +53,38 @@ def work_reminder_message(*, name: str, work_minutes: float) -> str:
     )
 
 
+def _finish_banner(*, waste: float, saved: float, mpp: float, pts: int) -> tuple[str, str, str]:
+    """banner, verdict, accent bar line."""
+    if waste >= 0.5:
+        pct = min(100.0, waste / max(waste + 0.01, 1) * 100)
+        if waste >= mpp * 2:
+            banner = "🚨 <b>DIQQAT! JIDDIY KECHIKISH</b> 🚨"
+        else:
+            banner = "⚠️ <b>NORMADAN SEKIN</b> ⚠️"
+        verdict = f"❌ Ortiqcha vaqt: <b>{fmt_minutes(waste)}</b>"
+        bar = progress_bar(pct, positive=False)
+        return banner, verdict, bar
+
+    if saved >= mpp:
+        pct = min(100.0, saved / max(saved + 0.01, 1) * 100)
+        if pts >= 3:
+            banner = "🔥🔥 <b>AJOYIB! SUPER TEZ!</b> 🔥🔥"
+        else:
+            banner = "🔥 <b>AJOYIB! VAQT TEJALDINGIZ!</b> 🔥"
+        verdict = f"⚡ Tejash: <b>{fmt_minutes(saved)}</b>"
+        bar = progress_bar(pct, positive=True)
+        return banner, verdict, bar
+
+    if saved > 0.5:
+        banner = "✨ <b>YAXSHI! NORMADA</b> ✨"
+        verdict = f"⚡ Tejash: <b>{fmt_minutes(saved)}</b>"
+        bar = progress_bar(min(100.0, saved / mpp * 100), positive=True)
+        return banner, verdict, bar
+
+    banner = "✅ <b>NORMADA YAKUNLANDI</b> ✅"
+    return banner, "", progress_bar(100, positive=True)
+
+
 def finish_message(
     *,
     name: str,
@@ -71,26 +104,20 @@ def finish_message(
     work_str = fmt_minutes(norm.work_minutes)
     norm_str = fmt_minutes(norm_time)
 
-    if waste >= 0.5:
-        verdict = "⚠️ <b>NORMADAN SEKIN</b>"
-        highlight = f"❌ Ortiqcha vaqt: <b>{fmt_minutes(waste)}</b>"
-    elif saved >= mpp:
-        verdict = "✅ <b>NORMADAN TEZ</b>"
-        highlight = f"⚡ Tejash: <b>{fmt_minutes(saved)}</b>"
-    elif saved > 0.5:
-        verdict = "✅ <b>NORMADA</b>"
-        highlight = f"⚡ Tejash: <b>{fmt_minutes(saved)}</b>"
-    else:
-        verdict = "✅ <b>NORMADA</b>"
-        highlight = ""
+    banner, verdict, bar = _finish_banner(waste=waste, saved=saved, mpp=mpp, pts=pts)
 
-    kaizen_line = f"🏆 Kaizen: <b>+{pts}</b> ball" if pts > 0 else ""
+    kaizen_line = ""
+    if pts > 0:
+        stars = "⭐" * min(pts, 5)
+        kaizen_line = f"🏆 Kaizen: <b>+{pts}</b> ball {stars}"
 
     pause_part = ""
     if norm.pause_minutes >= 0.5:
         pause_part = f"  ·  ⏸ <b>{fmt_minutes(norm.pause_minutes)}</b>"
 
     lines = [
+        banner,
+        "",
         "📊 <b>MESTA YAKUNLANDI</b>",
         "",
         f"👤 <b>{name}</b>",
@@ -98,15 +125,14 @@ def finish_message(
         "",
         _SEP,
         f"📦 <b>{actual}</b> pozitsiya{pause_part}",
-        "",
-        verdict,
     ]
-    if highlight:
-        lines.append(highlight)
+    if verdict:
+        lines.append(verdict)
     if kaizen_line:
         lines.append(kaizen_line)
     lines.extend(
         [
+            bar,
             "",
             _SEP,
             f"⏱ Ish: <b>{work_str}</b>  ·  📐 Norma: <b>{norm_str}</b>",

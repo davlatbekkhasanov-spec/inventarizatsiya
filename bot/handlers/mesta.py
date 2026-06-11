@@ -21,6 +21,7 @@ from bot.keyboards.worker import (
 )
 from bot.services.hub_day import save_today_push
 from bot.services.hub_summary import compact_hub_summary
+from bot.services.live_timer import live_timer
 from bot.database.models import SessionStatus
 from bot.services.mesta import (
     complete_finish,
@@ -56,7 +57,13 @@ def _keyboard_for_open(ws) -> object:
     return worker_active_kb()
 
 
-async def _reply_open_session(message: Message, ws, *, state: FSMContext | None = None) -> None:
+async def _reply_open_session(
+    message: Message,
+    ws,
+    *,
+    bot: Bot | None = None,
+    state: FSMContext | None = None,
+) -> None:
     if ws.status == SessionStatus.awaiting_positions:
         if state:
             await state.set_state(FinishStates.waiting_positions)
@@ -69,12 +76,27 @@ async def _reply_open_session(message: Message, ws, *, state: FSMContext | None 
         )
         return
 
+    uid, _ = _user(message)
+    kb = _keyboard_for_open(ws)
+    if bot:
+        timer_msg = await message.answer("⏳ <b>Sekundomer yuklanmoqda...</b>", reply_markup=kb)
+        name = ws.user.full_name if ws.user else "Noma'lum"
+        await live_timer.start(
+            bot,
+            tg_id=uid,
+            chat_id=message.chat.id,
+            message_id=timer_msg.message_id,
+            name=name,
+            ws=ws,
+        )
+        return
+
     status = "⏸ pauzada" if ws.status == SessionStatus.paused else "▶️ ishlayapti"
     await message.answer(
         f"⚠️ <b>Sizda ochiq mesta bor</b> ({status})\n\n"
         f"Boshlangan: <b>{fmt_hm(ws.started_at)}</b>\n\n"
         "Davom eting, «Yakunlash» bosing yoki yangi ish uchun /start yuboring.",
-        reply_markup=_keyboard_for_open(ws),
+        reply_markup=kb,
     )
 
 
@@ -93,20 +115,21 @@ async def cmd_start_mesta(message: Message, bot: Bot, db: AsyncSession, state: F
     uid, name = _user(message)
     existing = await get_open_session(db, uid)
     if existing:
-        return await _reply_open_session(message, existing, state=state)
+        return await _reply_open_session(message, existing, bot=bot, state=state)
 
     ws, err = await start_session(db, uid, name)
     if err:
         return await message.answer(f"⚠️ {err}")
     assert ws
     await send_group(bot, start_message(name=ws.user.full_name, started_at=ws.started_at))
-    mpp = get_settings().minutes_per_position
-    await message.answer(
-        "🚀 <b>Mesta boshlandi!</b>\n\n"
-        f"Vaqt: <b>{fmt_hm(ws.started_at)}</b>\n"
-        f"Norma: <b>1 pozitsiya = {mpp:g} daqiqa</b>\n\n"
-        "Ish tugagach «Yakunlash» tugmasini bosing va nechta pozitsiya qilganingizni kiriting.",
-        reply_markup=worker_active_kb(),
+    timer_msg = await message.answer("⏳ <b>Sekundomer yuklanmoqda...</b>", reply_markup=worker_active_kb())
+    await live_timer.start(
+        bot,
+        tg_id=uid,
+        chat_id=message.chat.id,
+        message_id=timer_msg.message_id,
+        name=ws.user.full_name,
+        ws=ws,
     )
 
 
@@ -119,8 +142,9 @@ async def cmd_pause(message: Message, bot: Bot, db: AsyncSession) -> None:
         return await message.answer(f"⚠️ {err}")
     assert view
     await send_group(bot, pause_message(name=view.user.full_name))
+    await live_timer.refresh(bot, uid)
     await message.answer(
-        "⏸ <b>Pauza</b>\n\nVaqt hisobi to'xtadi. Davom etish uchun tugmani bosing.",
+        "⏸ <b>Pauza</b>\n\nSekundomer to'xtadi. Davom etish uchun tugmani bosing.",
         reply_markup=worker_paused_kb(),
     )
 
@@ -134,20 +158,22 @@ async def cmd_resume(message: Message, bot: Bot, db: AsyncSession) -> None:
         return await message.answer(f"⚠️ {err}")
     assert view
     await send_group(bot, resume_message(name=view.user.full_name))
+    await live_timer.refresh(bot, uid)
     await message.answer(
-        "▶️ <b>Davom etildi</b>\n\nVaqt hisobi qayta boshlandi.",
+        "▶️ <b>Davom etildi</b>\n\nSekundomer qayta ishlayapti.",
         reply_markup=worker_active_kb(),
     )
 
 
 @router.message(Command("finish_mesta"))
 @router.message(F.text == BTN_FINISH)
-async def cmd_finish(message: Message, state: FSMContext, db: AsyncSession) -> None:
+async def cmd_finish(message: Message, bot: Bot, state: FSMContext, db: AsyncSession) -> None:
     uid, _ = _user(message)
     ws, err = await request_finish(db, uid)
     if err:
         return await message.answer(f"⚠️ {err}")
     assert ws
+    await live_timer.stop_with_work_time(bot, uid, header="🏁 <b>Sekundomer to'xtadi</b>")
     await state.set_state(FinishStates.waiting_positions)
     await state.update_data(session_id=ws.id)
     await message.answer(
