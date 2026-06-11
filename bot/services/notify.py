@@ -76,6 +76,15 @@ def finish_message(
     else:
         diff_line = "0 (normada)"
 
+    expected_min = norm.actual * mpp
+    saved_min = max(0.0, expected_min - norm.work_minutes)
+    kaizen_pts = int(saved_min // mpp) if mpp > 0 else 0
+    tejash_line = (
+        f"Tejash: <b>{fmt_minutes(saved_min)}</b> · Kaizen ball: <b>{kaizen_pts}</b>\n\n"
+        if norm.actual > 0
+        else ""
+    )
+
     return (
         "📊 <b>Mesta yakunlandi</b>\n\n"
         f"Xodim: <b>{name}</b>\n\n"
@@ -88,5 +97,6 @@ def finish_message(
         f"{norm_line}\n"
         f"Farq: <b>{diff_line}</b>"
         f"{waste_line}\n\n"
+        f"{tejash_line}"
         f"1 pozitsiyaga o'rtacha: <b>{avg_line}</b>"
     )

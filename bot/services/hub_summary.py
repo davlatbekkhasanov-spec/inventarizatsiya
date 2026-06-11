@@ -9,7 +9,10 @@ def compact_hub_summary(ws: WorkSession, norm: NormStatus) -> str:
     work_sec = int(session_work_seconds(ws))
     pause_sec = int(session_pause_seconds(ws))
     waste_sec = int(norm.waste_minutes * 60)
+    expected_sec = int(ws.total_positions) * 3 * 60
+    saved_sec = max(0, expected_sec - work_sec)
     ish = fmt_clock_from_seconds(work_sec)
     dam = fmt_clock_from_seconds(pause_sec)
+    tejash = fmt_clock_from_seconds(saved_sec)
     bekor = fmt_clock_from_seconds(waste_sec)
-    return f"Mesta: poz {ws.total_positions}, ish {ish}, dam {dam}, bekor {bekor}"
+    return f"Mesta: poz {ws.total_positions}, ish {ish}, dam {dam}, tejash {tejash}, bekor {bekor}"
