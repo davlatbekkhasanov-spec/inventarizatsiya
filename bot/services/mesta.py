@@ -27,9 +27,20 @@ def _norm_for(ws: WorkSession, *, actual: int | None = None, end=None) -> NormSt
     return evaluate_norm(pos, work_min, pause_minutes=pause_min)
 
 
+def _as_aware(dt):
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        from bot.utils.time_fmt import tz
+
+        return dt.replace(tzinfo=tz())
+    return dt
+
+
 def _close_pause(ws: WorkSession) -> None:
     if ws.paused_at and ws.status == SessionStatus.paused:
-        delta = max(0, int((now_dt() - ws.paused_at).total_seconds()))
+        paused_at = _as_aware(ws.paused_at)
+        delta = max(0, int((now_dt() - paused_at).total_seconds()))
         ws.total_pause_sec = int(ws.total_pause_sec or 0) + delta
         ws.paused_at = None
 
