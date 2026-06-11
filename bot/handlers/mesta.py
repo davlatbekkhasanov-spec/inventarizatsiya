@@ -21,8 +21,10 @@ from bot.keyboards.worker import (
 )
 from bot.services.hub_day import save_today_push
 from bot.services.hub_summary import compact_hub_summary
+from bot.database.models import SessionStatus
 from bot.services.mesta import (
     complete_finish,
+    get_open_session,
     list_active_sessions,
     pause_session,
     request_finish,
@@ -48,6 +50,34 @@ def _user(message: Message) -> tuple[int, str]:
     return (u.id if u else 0, (u.full_name if u else "") or "Noma'lum")
 
 
+def _keyboard_for_open(ws) -> object:
+    if ws.status == SessionStatus.paused:
+        return worker_paused_kb()
+    return worker_active_kb()
+
+
+async def _reply_open_session(message: Message, ws, *, state: FSMContext | None = None) -> None:
+    if ws.status == SessionStatus.awaiting_positions:
+        if state:
+            await state.set_state(FinishStates.waiting_positions)
+            await state.update_data(session_id=ws.id)
+        await message.answer(
+            "🏁 <b>Yakunlash davom etmoqda</b>\n\n"
+            "Nechta pozitsiya qildingiz?\n"
+            "Faqat raqam yuboring yoki /start bilan bekor qiling.",
+            reply_markup=worker_idle_kb(),
+        )
+        return
+
+    status = "⏸ pauzada" if ws.status == SessionStatus.paused else "▶️ ishlayapti"
+    await message.answer(
+        f"⚠️ <b>Sizda ochiq mesta bor</b> ({status})\n\n"
+        f"Boshlangan: <b>{fmt_hm(ws.started_at)}</b>\n\n"
+        "Davom eting, «Yakunlash» bosing yoki yangi ish uchun /start yuboring.",
+        reply_markup=_keyboard_for_open(ws),
+    )
+
+
 async def _push_hub(db: AsyncSession, *, tg_id: int, summary: str) -> None:
     day = today_iso()
     await save_today_push(db, day=day, tg_id=tg_id, summary=summary)
@@ -59,8 +89,12 @@ async def _push_hub(db: AsyncSession, *, tg_id: int, summary: str) -> None:
 
 @router.message(Command("start_mesta"))
 @router.message(F.text == BTN_START)
-async def cmd_start_mesta(message: Message, bot: Bot, db: AsyncSession) -> None:
+async def cmd_start_mesta(message: Message, bot: Bot, db: AsyncSession, state: FSMContext) -> None:
     uid, name = _user(message)
+    existing = await get_open_session(db, uid)
+    if existing:
+        return await _reply_open_session(message, existing, state=state)
+
     ws, err = await start_session(db, uid, name)
     if err:
         return await message.answer(f"⚠️ {err}")

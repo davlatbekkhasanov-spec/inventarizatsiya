@@ -14,6 +14,7 @@ class SessionStatus(StrEnum):
     paused = "paused"
     awaiting_positions = "awaiting_positions"
     finished = "finished"
+    cancelled = "cancelled"
 
 
 class User(Base):

@@ -46,6 +46,32 @@ async def get_or_create_user(session: AsyncSession, telegram_id: int, full_name:
     return user
 
 
+async def cancel_open_sessions(session: AsyncSession, telegram_id: int) -> int:
+    """Ochiq sessiyalarni bekor qilish (/start — eski ish tozalanadi)."""
+    open_statuses = (
+        SessionStatus.active,
+        SessionStatus.paused,
+        SessionStatus.awaiting_positions,
+    )
+    q = (
+        select(WorkSession)
+        .join(User)
+        .where(User.telegram_id == telegram_id, WorkSession.status.in_(open_statuses))
+        .options(joinedload(WorkSession.user))
+    )
+    rows = (await session.scalars(q)).all()
+    if not rows:
+        return 0
+    now = now_dt()
+    for ws in rows:
+        _close_pause(ws)
+        ws.status = SessionStatus.cancelled
+        ws.finished_at = now
+        ws.total_positions = 0
+    await session.flush()
+    return len(rows)
+
+
 async def get_open_session(session: AsyncSession, telegram_id: int) -> WorkSession | None:
     open_statuses = (
         SessionStatus.active,
