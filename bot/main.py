@@ -27,13 +27,21 @@ log = logging.getLogger(__name__)
 async def main() -> None:
     settings = get_settings()
     db_url = ""
-    try:
-        db_url, _ = await setup_database()
-        run_migrations(db_url)
-        await sync_admins_from_env()
-    except Exception as exc:
-        log.error("Database setup failed: %s", exc)
-        raise
+    last_exc: Exception | None = None
+    for attempt in range(1, 13):
+        try:
+            db_url, _ = await setup_database()
+            run_migrations(db_url)
+            await sync_admins_from_env()
+            last_exc = None
+            break
+        except Exception as exc:
+            last_exc = exc
+            log.warning("Database setup attempt %s/12 failed: %s", attempt, exc)
+            await asyncio.sleep(10)
+    if last_exc:
+        log.error("Database setup failed: %s", last_exc)
+        raise last_exc
 
     factory = require_session_local()
     async with factory() as session:
