@@ -83,8 +83,13 @@ def sync_connect_variants(url: str) -> list[dict]:
     if is_local_db(url):
         return [{}]
     if "railway.internal" in url:
-        return [{}, {"sslmode": "prefer"}, {"sslmode": "require"}]
-    return [{"sslmode": "require"}, {"sslmode": "prefer"}, {}]
+        return [{}]
+    return [{"sslmode": "prefer"}, {"sslmode": "require"}, {}]
+
+
+def sync_connect_args(url: str) -> dict:
+    variants = sync_connect_variants(url)
+    return variants[0] if variants else {}
 
 
 def alembic_sync_url(async_url: str) -> str:
