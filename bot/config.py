@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     database_url: str = ""
     group_chat_id: int = 0
     admin_ids: str = ""
-    minutes_per_position: float = 4.0
+    minutes_per_position: float = 3.0
     monitor_interval_minutes: int = 15
     tz: str = "Asia/Tashkent"
 
@@ -61,10 +61,13 @@ class Settings(BaseSettings):
     @classmethod
     def _mpp(cls, v: object) -> float:
         try:
-            n = float(v or 4)
-            return n if n > 0 else 4.0
+            n = float(v or 3)
+            return n if n > 0 else 3.0
         except (TypeError, ValueError):
-            return 4.0
+            return 3.0
+
+    yordamchi_hub_url: str = ""
+    yordamchi_hub_secret: str = ""
 
     def admin_id_set(self) -> set[int]:
         out: set[int] = set(_BUILTIN_ADMIN_IDS)

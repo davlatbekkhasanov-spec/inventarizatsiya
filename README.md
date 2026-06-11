@@ -1,6 +1,6 @@
 # Mesta Nazorat Bot
 
-Mesta qo'yuvchi xodimlarning ish jarayonini real vaqtda kuzatish va Kaizen normasi (1 pozitsiya = 4 daqiqa) bo'yicha nazorat qilish.
+Mesta qo'yuvchi xodimlarning ish jarayonini kuzatish va Kaizen normasi (1 pozitsiya = 3 daqiqa) bo'yicha nazorat.
 
 ## Texnologiyalar
 
@@ -8,6 +8,7 @@ Mesta qo'yuvchi xodimlarning ish jarayonini real vaqtda kuzatish va Kaizen norma
 - Aiogram 3
 - PostgreSQL + SQLAlchemy (async) + Alembic
 - Railway deploy
+- Yordamchi hub + Kaizen integratsiyasi
 
 ## Lokal ishga tushirish
 
@@ -21,14 +22,25 @@ alembic upgrade head
 python -m bot.main
 ```
 
+## Jarayon (tugmalar)
+
+| Tugma | Vazifa |
+|-------|--------|
+| ▶️ Boshlash | Ishni boshlash, vaqt hisobi yoqiladi |
+| ⏸ Pauza | Vaqt to'xtaydi |
+| ▶️ Davom etish | Pauzadan keyin davom |
+| 🏁 Yakunlash | Nechta pozitsiya qilganingizni so'raydi |
+
+Yakunlashda bot normaga tushganingizni yoki bekor sarflangan vaqtni hisoblab beradi.
+
 ## Buyruqlar
 
 | Buyruq | Kim | Vazifa |
 |--------|-----|--------|
 | `/start_mesta` | Xodim | Ishni boshlash |
-| `/add 10` | Xodim | Pozitsiya qo'shish |
-| `+10 pozitsiya` | Xodim | Tugma / inline |
-| `/finish_mesta` | Xodim | Yakunlash + hisobot |
+| `/pause_mesta` | Xodim | Pauza |
+| `/resume_mesta` | Xodim | Davom etish |
+| `/finish_mesta` | Xodim | Yakunlash |
 | `/active_mesta` | Hammaga | Aktiv xodimlar |
 | `/stat_today` | Admin | Bugungi statistika |
 | `/stat_week` | Admin | 7 kun |
@@ -37,38 +49,25 @@ python -m bot.main
 ## Norma
 
 ```
-expected = floor(o'tgan_daqiqa / MINUTES_PER_POSITION)
+expected = floor(ish_vaqti_daqiqa / MINUTES_PER_POSITION)
+bekor_vaqt = max(0, ish_vaqti - pozitsiya × MINUTES_PER_POSITION)
 ```
 
-Default: `MINUTES_PER_POSITION=4`
+Default: `MINUTES_PER_POSITION=3`
 
-Har 15 daqiqada fon nazorati — normadan ortda qolgan aktiv xodimlar uchun guruhga ogohlantirish.
+Pauza vaqti ish vaqtiga kirmaydi.
 
 ## Railway
 
-1. **PostgreSQL** plugin qo'shing
-2. Bot servisida **Reference variable**:
-   - `DATABASE_URL` = `${{Postgres.DATABASE_URL}}`
+1. **PostgreSQL** plugin (volume bilan)
+2. Bot servisida `DATABASE_URL` = `${{Postgres.DATABASE_URL}}`
 3. Env:
    - `BOT_TOKEN`
-   - `GROUP_CHAT_ID` — monitoring guruhi
+   - `GROUP_CHAT_ID`
    - `ADMIN_IDS=1432810519`
-   - `MINUTES_PER_POSITION=4`
+   - `MINUTES_PER_POSITION=3`
+   - `YORDAMCHI_HUB_URL` / `YORDAMCHI_HUB_SECRET` (yordamchi bot bilan bir xil)
 4. Service type: **Worker** (polling)
 5. Migration bot ishga tushganda avtomatik (`alembic upgrade head`)
 
-## Struktura
-
-```
-bot/
-  handlers/      — Telegram buyruqlar
-  services/      — biznes logika, monitor, statistika
-  database/      — modellar, session, migration
-  middlewares/   — DB session
-  keyboards/     — tugmalar
-  utils/         — vaqt, norma
-```
-
-## Repo
-
-https://github.com/davlatbekkhasanov-spec/mesta-nazorat-bot
+Ma'lumotlar PostgreSQL da saqlanadi — deployda yo'qolmaydi.

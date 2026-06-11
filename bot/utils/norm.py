@@ -8,12 +8,18 @@ from bot.config import get_settings
 
 @dataclass(frozen=True)
 class NormStatus:
-    elapsed_minutes: float
+    work_minutes: float
+    pause_minutes: float
     expected: int
     actual: int
     on_track: bool
     shortage: int
     surplus: int
+    waste_minutes: float
+
+    @property
+    def elapsed_minutes(self) -> float:
+        return self.work_minutes
 
     @property
     def difference(self) -> int:
@@ -21,22 +27,34 @@ class NormStatus:
         return self.expected - self.actual
 
 
-def expected_positions(elapsed_minutes: float, minutes_per_position: float | None = None) -> int:
+def expected_positions(work_minutes: float, minutes_per_position: float | None = None) -> int:
     mpp = minutes_per_position or get_settings().minutes_per_position
     if mpp <= 0:
-        mpp = 4.0
-    return int(math.floor(elapsed_minutes / mpp))
+        mpp = 3.0
+    return int(math.floor(work_minutes / mpp))
 
 
-def evaluate_norm(actual: int, elapsed_minutes: float, minutes_per_position: float | None = None) -> NormStatus:
-    exp = expected_positions(elapsed_minutes, minutes_per_position)
+def evaluate_norm(
+    actual: int,
+    work_minutes: float,
+    *,
+    pause_minutes: float = 0.0,
+    minutes_per_position: float | None = None,
+) -> NormStatus:
+    mpp = minutes_per_position or get_settings().minutes_per_position
+    if mpp <= 0:
+        mpp = 3.0
+    exp = expected_positions(work_minutes, mpp)
     shortage = max(0, exp - actual)
     surplus = max(0, actual - exp)
+    waste = max(0.0, work_minutes - actual * mpp)
     return NormStatus(
-        elapsed_minutes=elapsed_minutes,
+        work_minutes=work_minutes,
+        pause_minutes=pause_minutes,
         expected=exp,
         actual=actual,
         on_track=actual >= exp,
         shortage=shortage,
         surplus=surplus,
+        waste_minutes=waste,
     )

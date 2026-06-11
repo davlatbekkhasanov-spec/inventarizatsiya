@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from enum import StrEnum
 
-from sqlalchemy import BigInteger, DateTime, Float, ForeignKey, Integer, String, func
+from sqlalchemy import BigInteger, DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from bot.database.base import Base
@@ -11,6 +11,8 @@ from bot.database.base import Base
 
 class SessionStatus(StrEnum):
     active = "active"
+    paused = "paused"
+    awaiting_positions = "awaiting_positions"
     finished = "finished"
 
 
@@ -41,8 +43,10 @@ class WorkSession(Base):
     user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), index=True)
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    status: Mapped[str] = mapped_column(String(16), default=SessionStatus.active, index=True)
+    status: Mapped[str] = mapped_column(String(24), default=SessionStatus.active, index=True)
     total_positions: Mapped[int] = mapped_column(Integer, default=0)
+    paused_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    total_pause_sec: Mapped[int] = mapped_column(Integer, default=0)
     last_alert_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     user: Mapped[User] = relationship(back_populates="sessions")
@@ -59,3 +63,12 @@ class PositionLog(Base):
     logged_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
 
     session: Mapped[WorkSession] = relationship(back_populates="position_logs")
+
+
+class HubDayPush(Base):
+    __tablename__ = "hub_day_push"
+
+    day: Mapped[str] = mapped_column(String(10), primary_key=True)
+    tg_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    summary: Mapped[str] = mapped_column(Text)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

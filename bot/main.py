@@ -15,7 +15,9 @@ from bot.database.bootstrap import run_migrations, setup_database, sync_admins_f
 from bot.database.session import require_session_local
 from bot.handlers import setup_routers
 from bot.middlewares.db import DbSessionMiddleware
+from bot.services.hub_day import list_today_pushes
 from bot.services.monitor import run_norm_monitor
+from bot.yordamchi_push import push_to_yordamchi_hub, today_iso
 
 logging.basicConfig(
     level=logging.INFO,
@@ -78,6 +80,26 @@ async def main() -> None:
         except Exception:
             pass
         return True
+
+    try:
+        day = today_iso()
+        factory = require_session_local()
+        async with factory() as session:
+            rows = await list_today_pushes(session, day)
+        sent = 0
+        for tg_id, summary in rows:
+            ok, _via = await push_to_yordamchi_hub(
+                tg_id=tg_id,
+                bot_key="mesta",
+                summary=summary,
+                day_iso=day,
+            )
+            if ok:
+                sent += 1
+        if rows:
+            log.info("Mesta hub backfill: %s/%s for %s", sent, len(rows), day)
+    except Exception:
+        log.exception("mesta hub backfill xato")
 
     monitor_task = asyncio.create_task(run_norm_monitor(bot))
     try:

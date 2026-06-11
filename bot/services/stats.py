@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from bot.database.models import SessionStatus, User, WorkSession
-from bot.utils.time_fmt import now_dt, tz
+from bot.utils.time_fmt import now_dt, session_work_seconds, tz
 
 
 @dataclass
@@ -71,8 +71,7 @@ async def build_period_report(session: AsyncSession, *, days: int | None, title:
         per_user[uid]["positions"] += ws.total_positions
         per_user[uid]["sessions"] += 1
         if ws.finished_at and ws.started_at:
-            delta = (ws.finished_at - ws.started_at).total_seconds() / 60.0
-            per_user[uid]["minutes"] += max(0.0, delta)
+            per_user[uid]["minutes"] += session_work_seconds(ws) / 60.0
 
     workers: list[WorkerStat] = []
     for data in per_user.values():

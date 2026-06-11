@@ -33,23 +33,20 @@ def start_message(*, name: str, started_at) -> str:
     )
 
 
-def norm_message(*, name: str, norm: NormStatus) -> str:
-    mins = fmt_minutes(norm.elapsed_minutes)
-    if norm.on_track:
-        return (
-            "✅ <b>Norma bajarilmoqda</b>\n\n"
-            f"Xodim: <b>{name}</b>\n"
-            f"O'tgan vaqt: <b>{mins}</b>\n"
-            f"Kerak edi: <b>{norm.expected}</b>\n"
-            f"Kiritildi: <b>{norm.actual}</b>"
-        )
+def pause_message(*, name: str) -> str:
+    return f"⏸ <b>Pauza</b>\n\nXodim: <b>{name}</b>"
+
+
+def resume_message(*, name: str) -> str:
+    return f"▶️ <b>Davom etdi</b>\n\nXodim: <b>{name}</b>"
+
+
+def work_reminder_message(*, name: str, work_minutes: float) -> str:
     return (
-        "⚠️ <b>Normadan ortda qolmoqda</b>\n\n"
+        "⏰ <b>Eslatma</b>\n\n"
         f"Xodim: <b>{name}</b>\n"
-        f"O'tgan vaqt: <b>{mins}</b>\n"
-        f"Kerak edi: <b>{norm.expected}</b>\n"
-        f"Kiritildi: <b>{norm.actual}</b>\n"
-        f"Kamchilik: <b>{norm.shortage}</b>"
+        f"Ish vaqti: <b>{fmt_minutes(work_minutes)}</b>\n\n"
+        "Tayyor bo'lgach «Yakunlash» tugmasini bosing va pozitsiya sonini kiriting."
     )
 
 
@@ -58,29 +55,38 @@ def finish_message(
     name: str,
     started_at,
     finished_at,
-    total_minutes: float,
-    positions: int,
     norm: NormStatus,
-    avg_min_per_position: float | None,
+    minutes_per_position: float,
 ) -> str:
-    diff = norm.difference
-    if diff > 0:
-        diff_line = f"−{diff} (kamchilik)"
-    elif diff < 0:
-        diff_line = f"+{-diff} (ortiqcha)"
+    mpp = minutes_per_position if minutes_per_position > 0 else 3.0
+    avg = (norm.work_minutes / norm.actual) if norm.actual > 0 else None
+    avg_line = f"{avg:.1f} daqiqa" if avg is not None else "—"
+
+    if norm.on_track and norm.waste_minutes < 0.5:
+        norm_line = "✅ <b>Normaga tushdi</b>"
+        waste_line = ""
+    else:
+        norm_line = "⚠️ <b>Normadan ortda</b>"
+        waste_line = f"\nBekor sarflangan vaqt: <b>{fmt_minutes(norm.waste_minutes)}</b>"
+
+    if norm.difference > 0:
+        diff_line = f"−{norm.difference} pozitsiya (kamchilik)"
+    elif norm.difference < 0:
+        diff_line = f"+{-norm.difference} pozitsiya (ortiqcha)"
     else:
         diff_line = "0 (normada)"
-
-    avg_line = f"{avg_min_per_position:.1f} daqiqa" if avg_min_per_position is not None else "—"
 
     return (
         "📊 <b>Mesta yakunlandi</b>\n\n"
         f"Xodim: <b>{name}</b>\n\n"
         f"Boshlanish: <b>{fmt_datetime(started_at)}</b>\n"
         f"Tugash: <b>{fmt_datetime(finished_at)}</b>\n\n"
-        f"Umumiy vaqt: <b>{fmt_minutes(total_minutes)}</b>\n\n"
-        f"Kiritilgan pozitsiya:\n<b>{positions}</b>\n\n"
-        f"Norma:\n<b>{norm.expected}</b>\n\n"
-        f"Farq:\n<b>{diff_line}</b>\n\n"
-        f"1 pozitsiyaga o'rtacha:\n<b>{avg_line}</b>"
+        f"Ish vaqti: <b>{fmt_minutes(norm.work_minutes)}</b>\n"
+        f"Pauza: <b>{fmt_minutes(norm.pause_minutes)}</b>\n\n"
+        f"Bajarilgan pozitsiya: <b>{norm.actual}</b>\n"
+        f"Norma (1 poz = {mpp:g} daq): <b>{norm.expected}</b> kerak edi\n\n"
+        f"{norm_line}\n"
+        f"Farq: <b>{diff_line}</b>"
+        f"{waste_line}\n\n"
+        f"1 pozitsiyaga o'rtacha: <b>{avg_line}</b>"
     )
