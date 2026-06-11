@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 
 from aiogram import Bot, F, Router
+from aiogram.enums import ParseMode
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
@@ -34,10 +35,11 @@ from bot.services.mesta import (
 )
 from bot.services.notify import (
     finish_message,
+    group_finished_message,
+    group_started_message,
     pause_message,
     resume_message,
     send_group,
-    start_message,
 )
 from bot.utils.time_fmt import fmt_hm, fmt_minutes
 from bot.yordamchi_push import push_to_yordamchi_hub, push_to_yordamchi_hub_background, today_iso
@@ -121,16 +123,28 @@ async def cmd_start_mesta(message: Message, bot: Bot, db: AsyncSession, state: F
     if err:
         return await message.answer(f"⚠️ {err}")
     assert ws
-    await send_group(bot, start_message(name=ws.user.full_name, started_at=ws.started_at))
+    await send_group(bot, group_started_message(name=ws.user.full_name))
     timer_msg = await message.answer("⏳ <b>Sekundomer yuklanmoqda...</b>", reply_markup=worker_active_kb())
-    await live_timer.start(
-        bot,
-        tg_id=uid,
-        chat_id=message.chat.id,
-        message_id=timer_msg.message_id,
-        name=ws.user.full_name,
-        ws=ws,
-    )
+    try:
+        await live_timer.start(
+            bot,
+            tg_id=uid,
+            chat_id=message.chat.id,
+            message_id=timer_msg.message_id,
+            name=ws.user.full_name,
+            ws=ws,
+        )
+    except Exception:
+        log.exception("live timer start failed uid=%s", uid)
+        await bot.edit_message_text(
+            "🚀 <b>Mesta boshlandi!</b>\n\n"
+            f"👤 <b>{ws.user.full_name}</b>\n"
+            f"🕐 <b>{fmt_hm(ws.started_at)}</b>\n\n"
+            "«Yakunlash» tugmasini bosing.",
+            chat_id=message.chat.id,
+            message_id=timer_msg.message_id,
+            parse_mode=ParseMode.HTML,
+        )
 
 
 @router.message(Command("pause_mesta"))
@@ -205,6 +219,7 @@ async def finish_positions(message: Message, bot: Bot, db: AsyncSession, state: 
     )
     hub_summary = compact_hub_summary(ws, view.norm)
     await _push_hub(db, tg_id=uid, summary=hub_summary)
+    await send_group(bot, group_finished_message(name=view.user.full_name))
     await send_group(bot, report)
     await message.answer(report, reply_markup=worker_idle_kb())
 

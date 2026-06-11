@@ -14,6 +14,7 @@ from bot.config import get_settings
 from bot.database.bootstrap import run_migrations, setup_database, sync_admins_from_env
 from bot.database.session import require_session_local
 from bot.handlers import setup_routers
+from bot.middlewares.access import TeamAccessMiddleware
 from bot.middlewares.db import DbSessionMiddleware
 from bot.services.hub_day import list_today_pushes
 from bot.services.monitor import run_norm_monitor
@@ -58,12 +59,13 @@ async def main() -> None:
     log.info(
         "Mesta Nazorat Bot @%s | group=%s | norm=%s min/pos | admins=%s",
         me.username,
-        settings.group_chat_id or "—",
+        settings.effective_group_chat_id() or "—",
         settings.minutes_per_position,
         sorted(settings.admin_id_set()),
     )
 
     dp = Dispatcher(storage=MemoryStorage())
+    dp.message.middleware(TeamAccessMiddleware())
     dp.message.middleware(DbSessionMiddleware())
     dp.callback_query.middleware(DbSessionMiddleware())
     dp.include_router(setup_routers())

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import html
 import logging
 
 from aiogram import Bot
@@ -15,8 +16,12 @@ log = logging.getLogger(__name__)
 _SEP = "━━━━━━━━━━━━━━━━━"
 
 
+def _he(name: str) -> str:
+    return html.escape((name or "Noma'lum").strip() or "Noma'lum")
+
+
 async def send_group(bot: Bot, text: str) -> bool:
-    gid = get_settings().group_chat_id
+    gid = get_settings().effective_group_chat_id()
     if not gid:
         log.warning("GROUP_CHAT_ID yo'q — guruhga yuborilmadi")
         return False
@@ -28,12 +33,16 @@ async def send_group(bot: Bot, text: str) -> bool:
         return False
 
 
+def group_started_message(*, name: str) -> str:
+    return f"🚛  <b>{_he(name)}</b> mesta qo'yish ishlarini boshladi"
+
+
+def group_finished_message(*, name: str) -> str:
+    return f"🏁  <b>{_he(name)}</b> mesta qo'yish ishlarini yakunladi"
+
+
 def start_message(*, name: str, started_at) -> str:
-    return (
-        "🚀 <b>Mesta boshlandi</b>\n\n"
-        f"👤 <b>{name}</b>\n"
-        f"🕐 <b>{fmt_hm(started_at)}</b>"
-    )
+    return group_started_message(name=name)
 
 
 def pause_message(*, name: str) -> str:

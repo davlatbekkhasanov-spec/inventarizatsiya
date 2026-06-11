@@ -6,8 +6,9 @@ from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from bot.database.url import normalize_database_url, resolve_database_url
+from bot.employee_registry import BUILTIN_ADMIN_IDS, DEFAULT_GROUP_ID, builtin_team_ids
 
-_BUILTIN_ADMIN_IDS: frozenset[int] = frozenset({1432810519})
+_BUILTIN_ADMIN_IDS: frozenset[int] = BUILTIN_ADMIN_IDS
 
 
 class Settings(BaseSettings):
@@ -76,6 +77,17 @@ class Settings(BaseSettings):
             if part.isdigit():
                 out.add(int(part))
         return out
+
+    def team_id_set(self) -> frozenset[int]:
+        extra: set[int] = set()
+        for part in self.admin_ids.replace(";", ",").split(","):
+            part = part.strip()
+            if part.isdigit():
+                extra.add(int(part))
+        return builtin_team_ids() | frozenset(extra)
+
+    def effective_group_chat_id(self) -> int:
+        return self.group_chat_id or DEFAULT_GROUP_ID
 
 
 @lru_cache
