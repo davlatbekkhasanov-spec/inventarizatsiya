@@ -65,31 +65,44 @@ def run_migrations(url: str) -> None:
 
     global _sync_url, _sync_connect_args
     sync = alembic_sync_url(url)
+    engine = None
     last_err: Exception | None = None
     for connect_args in sync_connect_variants(url):
         try:
-            engine = create_engine(sync, connect_args=connect_args)
-            with engine.connect() as conn:
+            probe = create_engine(sync, connect_args=connect_args)
+            with probe.connect() as conn:
                 conn.execute(text("SELECT 1"))
+            engine = probe
             _sync_url = sync
             _sync_connect_args = connect_args
-            cfg = Config("alembic.ini")
-            command.upgrade(cfg, "head")
-            _apply_schema_patches(engine)
-            engine.dispose()
-            log.info("Alembic upgrade head OK")
-            return
+            break
         except Exception as exc:
             last_err = exc
-            log.warning("Migration failed: %s", exc)
+            log.warning("Migration DB probe failed: %s", exc)
 
-    log.error("Alembic failed, create_all fallback: %s", last_err)
-    engine = create_engine(sync, connect_args=_sync_connect_args or {})
+    if engine is None:
+        raise RuntimeError(f"Migration DB ulanmadi: {last_err}")
+
+    cfg = Config("alembic.ini")
     try:
-        Base.metadata.create_all(engine)
-        _apply_schema_patches(engine)
-    finally:
-        engine.dispose()
+        with engine.connect() as conn:
+            has_users = conn.execute(text("SELECT to_regclass('public.users')")).scalar()
+            has_ver = conn.execute(text("SELECT to_regclass('public.alembic_version')")).scalar()
+        if has_users and not has_ver:
+            command.stamp(cfg, "001")
+            log.info("Alembic stamped 001 (mavjud jadval)")
+        command.upgrade(cfg, "head")
+        log.info("Alembic upgrade head OK")
+    except Exception as exc:
+        last_err = exc
+        log.warning("Alembic upgrade failed: %s", exc)
+        try:
+            Base.metadata.create_all(engine)
+        except Exception as exc2:
+            log.warning("create_all fallback failed: %s", exc2)
+
+    _apply_schema_patches(engine)
+    engine.dispose()
 
 
 def _apply_schema_patches(engine) -> None:
