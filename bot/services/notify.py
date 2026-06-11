@@ -11,7 +11,7 @@ from bot.utils.time_fmt import fmt_datetime, fmt_hm, fmt_minutes
 
 log = logging.getLogger(__name__)
 
-_SEP = "─────────────────"
+_SEP = "━━━━━━━━━━━━━━━━━"
 
 
 async def send_group(bot: Bot, text: str) -> bool:
@@ -52,29 +52,6 @@ def work_reminder_message(*, name: str, work_minutes: float) -> str:
     )
 
 
-def _fmt_avg_per_position(work_minutes: float, actual: int) -> str:
-    if actual <= 0:
-        return "—"
-    avg_min = work_minutes / actual
-    if avg_min < 1:
-        sec = max(1, int(round(avg_min * 60)))
-        return f"{sec} soniya"
-    return f"{avg_min:.1f} daqiqa"
-
-
-def _pace_line(*, actual: int, work_minutes: float, mpp: float) -> str:
-    """Ish vaqtiga qarab kutilgan pozitsiya (faqat ma'noli bo'lsa)."""
-    if work_minutes < mpp:
-        return ""
-    expected_pos = int(work_minutes // mpp)
-    diff = actual - expected_pos
-    if diff > 0:
-        return f"📈 Sur'at: <b>+{diff}</b> poz (vaqtga nisbatan ortiqcha)\n"
-    if diff < 0:
-        return f"📉 Sur'at: <b>{diff}</b> poz (vaqtga nisbatan kam)\n"
-    return "📊 Sur'at: vaqt bo'yicha normada\n"
-
-
 def finish_message(
     *,
     name: str,
@@ -90,45 +67,50 @@ def finish_message(
     waste = norm.waste_minutes
     pts = kaizen_points(saved, mpp)
 
-    if waste < 0.5:
-        if saved >= mpp:
-            verdict = "✅ <b>Normadan tez — vaqt tejaldi</b>"
-        elif saved > 0.5:
-            verdict = "✅ <b>Normaga tushdi</b>"
-        else:
-            verdict = "✅ <b>Normaga tushdi</b>"
-    else:
-        verdict = "⚠️ <b>Normadan sekin — ortiqcha vaqt sarflandi</b>"
+    date_str = fmt_datetime(started_at).split(" ", 1)[0]
+    work_str = fmt_minutes(norm.work_minutes)
+    norm_str = fmt_minutes(norm_time)
 
-    norm_block = (
-        f"📐 Kerakli vaqt: <b>{fmt_minutes(norm_time)}</b>\n"
-        f"   <i>({actual} poz × {mpp:g} daq)</i>\n"
-        f"⏱ Sarflangan: <b>{fmt_minutes(norm.work_minutes)}</b>\n\n"
-        f"{verdict}\n"
-    )
-
-    if saved >= 0.5:
-        norm_block += f"⚡ Tejash: <b>{fmt_minutes(saved)}</b>\n"
     if waste >= 0.5:
-        norm_block += f"❌ Ortiqcha vaqt: <b>{fmt_minutes(waste)}</b>\n"
-    if actual > 0 and pts > 0:
-        norm_block += f"🏆 Kaizen ball: <b>+{pts}</b> <i>(har {mpp:g} daq tejash = 1 ball)</i>\n"
+        verdict = "⚠️ <b>NORMADAN SEKIN</b>"
+        highlight = f"❌ Ortiqcha vaqt: <b>{fmt_minutes(waste)}</b>"
+    elif saved >= mpp:
+        verdict = "✅ <b>NORMADAN TEZ</b>"
+        highlight = f"⚡ Tejash: <b>{fmt_minutes(saved)}</b>"
+    elif saved > 0.5:
+        verdict = "✅ <b>NORMADA</b>"
+        highlight = f"⚡ Tejash: <b>{fmt_minutes(saved)}</b>"
+    else:
+        verdict = "✅ <b>NORMADA</b>"
+        highlight = ""
 
-    pace = _pace_line(actual=actual, work_minutes=norm.work_minutes, mpp=mpp)
+    kaizen_line = f"🏆 Kaizen: <b>+{pts}</b> ball" if pts > 0 else ""
 
-    return (
-        "📊 <b>Mesta yakunlandi</b>\n\n"
-        f"👤 <b>{name}</b>\n"
-        f"🕐 <b>{fmt_hm(started_at)}</b> → <b>{fmt_hm(finished_at)}</b>\n"
-        f"📅 {fmt_datetime(started_at).split(' ', 1)[0]}\n\n"
-        f"{_SEP}\n"
-        "<b>Natija</b>\n"
-        f"📦 Pozitsiya: <b>{actual} ta</b>\n"
-        f"⏱ Ish vaqti: <b>{fmt_minutes(norm.work_minutes)}</b>\n"
-        f"⏸ Pauza: <b>{fmt_minutes(norm.pause_minutes)}</b>\n\n"
-        f"{_SEP}\n"
-        f"<b>Norma</b> <i>(1 poz = {mpp:g} daq)</i>\n"
-        f"{norm_block}\n"
-        f"{pace}"
-        f"📌 1 pozitsiya: o'rtacha <b>{_fmt_avg_per_position(norm.work_minutes, actual)}</b>"
+    pause_part = ""
+    if norm.pause_minutes >= 0.5:
+        pause_part = f"  ·  ⏸ <b>{fmt_minutes(norm.pause_minutes)}</b>"
+
+    lines = [
+        "📊 <b>MESTA YAKUNLANDI</b>",
+        "",
+        f"👤 <b>{name}</b>",
+        f"🕐 {date_str}  ·  <b>{fmt_hm(started_at)}</b> → <b>{fmt_hm(finished_at)}</b>",
+        "",
+        _SEP,
+        f"📦 <b>{actual}</b> pozitsiya{pause_part}",
+        "",
+        verdict,
+    ]
+    if highlight:
+        lines.append(highlight)
+    if kaizen_line:
+        lines.append(kaizen_line)
+    lines.extend(
+        [
+            "",
+            _SEP,
+            f"⏱ Ish: <b>{work_str}</b>  ·  📐 Norma: <b>{norm_str}</b>",
+        ]
     )
+
+    return "\n".join(lines)
