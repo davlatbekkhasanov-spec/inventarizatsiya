@@ -112,6 +112,8 @@ def finish_message(
     date_str = fmt_datetime(started_at).split(" ", 1)[0]
     work_str = fmt_minutes(norm.work_minutes)
     norm_str = fmt_minutes(norm_time)
+    total_min = norm.work_minutes + norm.pause_minutes
+    total_str = fmt_minutes(total_min)
 
     banner, verdict, bar = _finish_banner(waste=waste, saved=saved, mpp=mpp, pts=pts)
 
@@ -122,7 +124,7 @@ def finish_message(
 
     pause_part = ""
     if norm.pause_minutes >= 0.5:
-        pause_part = f"  ·  ⏸ <b>{fmt_minutes(norm.pause_minutes)}</b>"
+        pause_part = f"\n⏸ Pauza: <b>{fmt_minutes(norm.pause_minutes)}</b> <i>(ish vaqtiga kirmaydi)</i>"
 
     lines = [
         banner,
@@ -144,7 +146,8 @@ def finish_message(
             bar,
             "",
             _SEP,
-            f"⏱ Ish: <b>{work_str}</b>  ·  📐 Norma: <b>{norm_str}</b>",
+            f"🕐 Jami: <b>{total_str}</b>",
+            f"▶️ Ish: <b>{work_str}</b>  ·  📐 Norma: <b>{norm_str}</b>",
         ]
     )
 
