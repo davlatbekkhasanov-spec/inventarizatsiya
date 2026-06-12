@@ -20,6 +20,16 @@ def _he(name: str) -> str:
     return html.escape((name or "Noma'lum").strip() or "Noma'lum")
 
 
+async def send_worker(bot: Bot, telegram_id: int, text: str) -> bool:
+    """Shaxsiy chat — eslatmalar va xizmat xabarlari."""
+    try:
+        await bot.send_message(telegram_id, text)
+        return True
+    except TelegramAPIError as exc:
+        log.warning("Xodimga yuborish xato (%s): %s", telegram_id, exc)
+        return False
+
+
 async def send_group(bot: Bot, text: str) -> bool:
     gid = get_settings().effective_group_chat_id()
     if not gid:

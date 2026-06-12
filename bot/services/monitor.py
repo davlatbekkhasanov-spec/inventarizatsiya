@@ -8,7 +8,7 @@ from aiogram import Bot
 from bot.config import get_settings
 from bot.database.session import require_session_local
 from bot.services.mesta import list_active_for_monitor, mark_alerted
-from bot.services.notify import send_group, work_reminder_message
+from bot.services.notify import send_worker, work_reminder_message
 
 log = logging.getLogger(__name__)
 
@@ -42,6 +42,6 @@ async def _check_once(bot: Bot, cooldown_minutes: int) -> None:
                 if delta < cooldown_minutes:
                     continue
             text = work_reminder_message(name=view.user.full_name, work_minutes=view.norm.work_minutes)
-            if await send_group(bot, text):
+            if await send_worker(bot, view.user.telegram_id, text):
                 await mark_alerted(session, ws)
         await session.commit()
