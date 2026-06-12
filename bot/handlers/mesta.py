@@ -81,15 +81,15 @@ async def _reply_open_session(
     uid, _ = _user(message)
     kb = _keyboard_for_open(ws)
     if bot:
-        timer_msg = await message.answer("⏳ <b>Sekundomer yuklanmoqda...</b>", reply_markup=kb)
         name = ws.user.full_name if ws.user else "Noma'lum"
-        await live_timer.start(
+        timer_text = live_timer.render_ws(ws, name)
+        timer_msg = await message.answer(timer_text, reply_markup=kb)
+        await live_timer.attach(
             bot,
             tg_id=uid,
             chat_id=message.chat.id,
             message_id=timer_msg.message_id,
             name=name,
-            ws=ws,
         )
         return
 
@@ -124,27 +124,15 @@ async def cmd_start_mesta(message: Message, bot: Bot, db: AsyncSession, state: F
         return await message.answer(f"⚠️ {err}")
     assert ws
     await send_group(bot, group_started_message(name=ws.user.full_name))
-    timer_msg = await message.answer("⏳ <b>Sekundomer yuklanmoqda...</b>", reply_markup=worker_active_kb())
-    try:
-        await live_timer.start(
-            bot,
-            tg_id=uid,
-            chat_id=message.chat.id,
-            message_id=timer_msg.message_id,
-            name=ws.user.full_name,
-            ws=ws,
-        )
-    except Exception:
-        log.exception("live timer start failed uid=%s", uid)
-        await bot.edit_message_text(
-            "🚀 <b>Mesta boshlandi!</b>\n\n"
-            f"👤 <b>{ws.user.full_name}</b>\n"
-            f"🕐 <b>{fmt_hm(ws.started_at)}</b>\n\n"
-            "«Yakunlash» tugmasini bosing.",
-            chat_id=message.chat.id,
-            message_id=timer_msg.message_id,
-            parse_mode=ParseMode.HTML,
-        )
+    timer_text = live_timer.render_ws(ws, ws.user.full_name)
+    timer_msg = await message.answer(timer_text, reply_markup=worker_active_kb())
+    await live_timer.attach(
+        bot,
+        tg_id=uid,
+        chat_id=message.chat.id,
+        message_id=timer_msg.message_id,
+        name=ws.user.full_name,
+    )
 
 
 @router.message(Command("pause_mesta"))

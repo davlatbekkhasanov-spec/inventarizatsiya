@@ -7,7 +7,7 @@ from aiogram import Bot
 from aiogram.exceptions import TelegramAPIError
 
 from bot.config import get_settings
-from bot.utils.norm import NormStatus, kaizen_points, norm_time_minutes, time_saved_minutes
+from bot.utils.norm import NormStatus, kaizen_points, norm_time_minutes, time_saved_minutes, time_waste_minutes
 from bot.utils.time_fmt import fmt_datetime, fmt_hm, fmt_minutes
 from bot.utils.visual import progress_bar
 
@@ -105,14 +105,14 @@ def finish_message(
     mpp = minutes_per_position if minutes_per_position > 0 else 3.0
     actual = norm.actual
     norm_time = norm_time_minutes(actual, mpp)
-    saved = time_saved_minutes(actual, norm.work_minutes, mpp)
-    waste = norm.waste_minutes
+    saved = time_saved_minutes(actual, norm.work_minutes, mpp, pause_minutes=norm.pause_minutes)
+    waste = time_waste_minutes(actual, norm.work_minutes, mpp, pause_minutes=norm.pause_minutes)
     pts = kaizen_points(saved, mpp)
 
     date_str = fmt_datetime(started_at).split(" ", 1)[0]
     work_str = fmt_minutes(norm.work_minutes)
     norm_str = fmt_minutes(norm_time)
-    total_min = norm.work_minutes + norm.pause_minutes
+    total_min = norm.total_minutes
     total_str = fmt_minutes(total_min)
 
     banner, verdict, bar = _finish_banner(waste=waste, saved=saved, mpp=mpp, pts=pts)
@@ -124,7 +124,7 @@ def finish_message(
 
     pause_part = ""
     if norm.pause_minutes >= 0.5:
-        pause_part = f"\n⏸ Pauza: <b>{fmt_minutes(norm.pause_minutes)}</b> <i>(ish vaqtiga kirmaydi)</i>"
+        pause_part = f"\n⏸ Pauza: <b>{fmt_minutes(norm.pause_minutes)}</b> <i>(normaga qo'shiladi)</i>"
 
     lines = [
         banner,
@@ -146,8 +146,8 @@ def finish_message(
             bar,
             "",
             _SEP,
-            f"🕐 Jami: <b>{total_str}</b>",
-            f"▶️ Ish: <b>{work_str}</b>  ·  📐 Norma: <b>{norm_str}</b>",
+            f"🕐 Jami: <b>{total_str}</b>  ·  📐 Norma: <b>{norm_str}</b>",
+            f"▶️ Ish: <b>{work_str}</b>",
         ]
     )
 

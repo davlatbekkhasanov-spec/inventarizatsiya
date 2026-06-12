@@ -21,4 +21,5 @@ def progress_bar(percent: float, *, width: int = 10, positive: bool = True) -> s
 
 
 def clock_box(clock: str) -> str:
-    return f"<code>⏱ {clock}</code>"
+    """Telegram HTML: emoji <code> ichida bo'lmasin."""
+    return f"⏱ <b><code>{clock}</code></b>"
