@@ -37,8 +37,6 @@ from bot.services.notify import (
     finish_message,
     group_finished_message,
     group_started_message,
-    pause_message,
-    resume_message,
     send_group,
 )
 from bot.utils.time_fmt import fmt_hm, fmt_minutes
@@ -143,7 +141,6 @@ async def cmd_pause(message: Message, bot: Bot, db: AsyncSession) -> None:
     if err:
         return await message.answer(f"⚠️ {err}")
     assert view
-    await send_group(bot, pause_message(name=view.user.full_name))
     await live_timer.refresh(bot, uid)
     await message.answer(
         "⏸ <b>Pauza</b>\n\nSekundomer to'xtadi. Davom etish uchun tugmani bosing.",
@@ -159,7 +156,6 @@ async def cmd_resume(message: Message, bot: Bot, db: AsyncSession) -> None:
     if err:
         return await message.answer(f"⚠️ {err}")
     assert view
-    await send_group(bot, resume_message(name=view.user.full_name))
     await live_timer.refresh(bot, uid)
     await message.answer(
         "▶️ <b>Davom etildi</b>\n\nSekundomer qayta ishlayapti.",
