@@ -66,7 +66,9 @@ Pauza vaqti ish vaqtiga kirmaydi.
    - `GROUP_CHAT_ID`
    - `ADMIN_IDS=1432810519`
    - `MINUTES_PER_POSITION=3`
-   - `YORDAMCHI_HUB_URL` / `YORDAMCHI_HUB_SECRET` (yordamchi bot bilan bir xil)
+   - `YORDAMCHI_HUB_URL` = `https://davlat-yordamchi-bot-production.up.railway.app`
+   - `YORDAMCHI_HUB_SECRET` — yordamchi bot bilan **bir xil** (majburiy, ballar uchun)
+   - Zaxira: `YORDAMCHI_INGEST_CHAT_ID` + `YORDAMCHI_BOT_TOKEN`
 4. Service type: **Worker** (polling)
 5. Migration bot ishga tushganda avtomatik (`alembic upgrade head`)
 

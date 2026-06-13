@@ -13,7 +13,13 @@ from zoneinfo import ZoneInfo
 
 log = logging.getLogger(__name__)
 
-HUB_URL = (os.getenv("YORDAMCHI_HUB_URL", "").strip() or os.getenv("HUB_URL", "").strip()).rstrip("/")
+DEFAULT_HUB_URL = "https://davlat-yordamchi-bot-production.up.railway.app"
+
+HUB_URL = (
+    os.getenv("YORDAMCHI_HUB_URL", "").strip()
+    or os.getenv("HUB_URL", "").strip()
+    or DEFAULT_HUB_URL
+).rstrip("/")
 HUB_SECRET = (
     os.getenv("YORDAMCHI_HUB_SECRET", "").strip()
     or os.getenv("HUB_SECRET", "").strip()
@@ -37,6 +43,19 @@ def hub_configured() -> bool:
     return False
 
 
+def hub_status_line() -> str:
+    if HUB_URL and HUB_SECRET:
+        return f"HTTP ({HUB_URL})"
+    if TG_BOT_TOKEN and INGEST_CHAT_ID:
+        return f"Telegram ingest ({INGEST_CHAT_ID})"
+    missing = []
+    if not HUB_SECRET:
+        missing.append("YORDAMCHI_HUB_SECRET")
+    if not (TG_BOT_TOKEN and INGEST_CHAT_ID):
+        missing.append("YORDAMCHI_INGEST_CHAT_ID yoki BOT_TOKEN")
+    return "YO'Q — " + ", ".join(missing)
+
+
 def _post_http(payload: dict) -> bool:
     if not HUB_URL or not HUB_SECRET:
         return False
@@ -54,6 +73,9 @@ def _post_http(payload: dict) -> bool:
     try:
         with urllib.request.urlopen(req, timeout=10) as resp:
             return 200 <= resp.status < 300
+    except urllib.error.HTTPError as e:
+        log.warning("Hub HTTP ingest HTTPError %s: %s", e.code, e.reason)
+        return False
     except Exception as e:
         log.warning("Hub HTTP ingest failed: %s", e)
         return False
@@ -82,7 +104,7 @@ def _post_telegram(day: str, tg_id: int, bot_key: str, summary: str) -> bool:
 
 def _send_sync(payload: dict, day: str, tg_id: int, bot_key: str, summary: str) -> tuple[bool, str]:
     if not hub_configured():
-        return False, "Hub sozlanmagan"
+        return False, "Hub sozlanmagan (URL/SECRET yoki BOT_TOKEN/INGEST_CHAT_ID yo'q)"
     if _post_http(payload):
         return True, "HTTP"
     if _post_telegram(day, tg_id, bot_key, summary):
@@ -108,9 +130,14 @@ async def push_to_yordamchi_hub(
         return _send_sync(payload, day, int(tg_id), payload["bot_key"], payload["summary"])
 
     try:
-        return await asyncio.to_thread(_run)
+        ok, via = await asyncio.to_thread(_run)
+        if ok:
+            log.info("Hub push ok: tg=%s bot=%s via=%s", tg_id, bot_key, via)
+        else:
+            log.warning("Hub push failed: tg=%s bot=%s reason=%s", tg_id, bot_key, via)
+        return ok, via
     except Exception as e:
-        log.debug("push_to_yordamchi_hub: %s", e)
+        log.warning("push_to_yordamchi_hub: %s", e)
         return False, str(e)[:80]
 
 

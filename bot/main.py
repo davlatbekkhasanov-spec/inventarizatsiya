@@ -18,7 +18,7 @@ from bot.middlewares.access import TeamAccessMiddleware
 from bot.middlewares.db import DbSessionMiddleware
 from bot.services.hub_day import list_today_pushes
 from bot.services.monitor import run_norm_monitor
-from bot.yordamchi_push import push_to_yordamchi_hub, today_iso
+from bot.yordamchi_push import hub_status_line, push_to_yordamchi_hub, today_iso
 
 logging.basicConfig(
     level=logging.INFO,
@@ -62,6 +62,10 @@ async def main() -> None:
         settings.effective_group_chat_id() or "—",
         settings.minutes_per_position,
         sorted(settings.admin_id_set()),
+    )
+    log.info(
+        "Notify policy v3: guruh=ish boshlash+yakun; pauza/eslatma=faqat lichka | Hub: %s",
+        hub_status_line(),
     )
 
     dp = Dispatcher(storage=MemoryStorage())
