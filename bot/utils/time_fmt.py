@@ -56,12 +56,12 @@ def fmt_minutes(m: float) -> str:
 
 
 def fmt_clock_from_seconds(sec: float) -> str:
-    """Hub uchun qisqa: 75:00 yoki 1:15:00."""
+    """Hub uchun: <1 soat MM:SS, ≥1 soat H:MM:SS (yordamchi parser bilan mos)."""
     s = max(0, int(sec))
     h, rem = divmod(s, 3600)
     m, secs = divmod(rem, 60)
     if h:
-        return f"{h}:{m:02d}"
+        return f"{h}:{m:02d}:{secs:02d}"
     return f"{m}:{secs:02d}"
 
 

@@ -100,11 +100,16 @@ async def _reply_open_session(
     )
 
 
-async def _push_hub(db: AsyncSession, *, tg_id: int, summary: str) -> None:
+async def _push_hub(db: AsyncSession, *, tg_id: int, summary: str, session_id: int | None = None) -> None:
+    from bot.services.hub_replay import mark_hub_pushed
+
     day = today_iso()
     await save_today_push(db, day=day, tg_id=tg_id, summary=summary)
     ok, via = await push_to_yordamchi_hub(tg_id=tg_id, bot_key="mesta", summary=summary, day_iso=day)
-    if not ok:
+    if ok:
+        if session_id:
+            await mark_hub_pushed(db, session_id)
+    else:
         log.warning("mesta hub push failed uid=%s via=%s", tg_id, via)
         push_to_yordamchi_hub_background(tg_id=tg_id, bot_key="mesta", summary=summary, day_iso=day)
 
@@ -202,7 +207,7 @@ async def finish_positions(message: Message, bot: Bot, db: AsyncSession, state: 
         minutes_per_position=settings.minutes_per_position,
     )
     hub_summary = compact_hub_summary(ws, view.norm)
-    await _push_hub(db, tg_id=uid, summary=hub_summary)
+    await _push_hub(db, tg_id=uid, summary=hub_summary, session_id=ws.id)
     await send_group(bot, group_finished_message(name=view.user.full_name))
     await send_group(bot, report)
     await message.answer(report, reply_markup=worker_idle_kb())

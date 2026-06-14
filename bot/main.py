@@ -16,7 +16,7 @@ from bot.database.session import require_session_local
 from bot.handlers import setup_routers
 from bot.middlewares.access import TeamAccessMiddleware
 from bot.middlewares.db import DbSessionMiddleware
-from bot.services.hub_day import list_today_pushes
+from bot.services.hub_replay import list_unpushed_finishes, mark_hub_pushed
 from bot.services.monitor import run_norm_monitor
 from bot.yordamchi_push import hub_status_line, push_to_yordamchi_hub, today_iso
 
@@ -64,7 +64,7 @@ async def main() -> None:
         sorted(settings.admin_id_set()),
     )
     log.info(
-        "Notify policy v3: guruh=ish boshlash+yakun; pauza/eslatma=faqat lichka | Hub: %s",
+        "Notify policy v3: guruh=ish boshlash+yakun; pauza/eslatma=faqat lichka | Hub: %s | kaizen=hub summary",
         hub_status_line(),
     )
 
@@ -91,21 +91,23 @@ async def main() -> None:
         day = today_iso()
         factory = require_session_local()
         async with factory() as session:
-            rows = await list_today_pushes(session, day)
-        sent = 0
-        for tg_id, summary in rows:
-            ok, _via = await push_to_yordamchi_hub(
-                tg_id=tg_id,
-                bot_key="mesta",
-                summary=summary,
-                day_iso=day,
-            )
-            if ok:
-                sent += 1
-        if rows:
-            log.info("Mesta hub backfill: %s/%s for %s", sent, len(rows), day)
+            pending = await list_unpushed_finishes(session, day)
+            sent = 0
+            for tg_id, summary, session_id in pending:
+                ok, _via = await push_to_yordamchi_hub(
+                    tg_id=tg_id,
+                    bot_key="mesta",
+                    summary=summary,
+                    day_iso=day,
+                )
+                if ok:
+                    await mark_hub_pushed(session, session_id)
+                    sent += 1
+            await session.commit()
+        if pending:
+            log.info("Mesta hub replay: %s/%s sessiya for %s", sent, len(pending), day)
     except Exception:
-        log.exception("mesta hub backfill xato")
+        log.exception("mesta hub replay xato")
 
     monitor_task = asyncio.create_task(run_norm_monitor(bot))
     try:

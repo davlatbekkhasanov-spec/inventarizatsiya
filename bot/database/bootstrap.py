@@ -110,6 +110,7 @@ def _apply_schema_patches(engine) -> None:
     patches = [
         "ALTER TABLE work_sessions ADD COLUMN IF NOT EXISTS paused_at TIMESTAMPTZ",
         "ALTER TABLE work_sessions ADD COLUMN IF NOT EXISTS total_pause_sec INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE work_sessions ADD COLUMN IF NOT EXISTS hub_pushed_at TIMESTAMPTZ",
         "ALTER TABLE work_sessions ALTER COLUMN status TYPE VARCHAR(32)",
         """
         CREATE TABLE IF NOT EXISTS hub_day_push (

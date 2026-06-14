@@ -49,6 +49,7 @@ class WorkSession(Base):
     paused_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     total_pause_sec: Mapped[int] = mapped_column(Integer, default=0)
     last_alert_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    hub_pushed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     user: Mapped[User] = relationship(back_populates="sessions")
     position_logs: Mapped[list["PositionLog"]] = relationship(back_populates="session")
