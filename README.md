@@ -1,6 +1,6 @@
-# Mesta Nazorat Bot
+# Inventarizatsiya Nazorat Bot
 
-Mesta qo'yuvchi xodimlarning ish jarayonini kuzatish va Kaizen normasi (1 pozitsiya = 3 daqiqa) bo'yicha nazorat.
+Inventarizatsiya xodimlarining ish jarayonini kuzatish va Kaizen normasi (1 pozitsiya = 3 daqiqa) bo'yicha nazorat.
 
 ## Texnologiyalar
 
@@ -37,11 +37,11 @@ Yakunlashda bot normaga tushganingizni yoki bekor sarflangan vaqtni hisoblab ber
 
 | Buyruq | Kim | Vazifa |
 |--------|-----|--------|
-| `/start_mesta` | Xodim | Ishni boshlash |
-| `/pause_mesta` | Xodim | Pauza |
-| `/resume_mesta` | Xodim | Davom etish |
-| `/finish_mesta` | Xodim | Yakunlash |
-| `/active_mesta` | Hammaga | Aktiv xodimlar |
+| `/start_inventarizatsiya` | Xodim | Ishni boshlash |
+| `/pause_inventarizatsiya` | Xodim | Pauza |
+| `/resume_inventarizatsiya` | Xodim | Davom etish |
+| `/finish_inventarizatsiya` | Xodim | Yakunlash |
+| `/active_inventarizatsiya` | Hammaga | Aktiv xodimlar |
 | `/stat_today` | Admin | Bugungi statistika |
 | `/stat_week` | Admin | 7 kun |
 | `/stat_month` | Admin | 30 kun |

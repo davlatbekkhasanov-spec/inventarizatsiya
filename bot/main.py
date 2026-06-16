@@ -57,7 +57,7 @@ async def main() -> None:
     )
     me = await bot.get_me()
     log.info(
-        "Mesta Nazorat Bot @%s | group=%s | norm=%s min/pos | admins=%s",
+        "Inventarizatsiya Nazorat Bot @%s | group=%s | norm=%s min/pos | admins=%s",
         me.username,
         settings.effective_group_chat_id() or "—",
         settings.minutes_per_position,
@@ -96,7 +96,7 @@ async def main() -> None:
             for tg_id, summary, session_id in pending:
                 ok, _via = await push_to_yordamchi_hub(
                     tg_id=tg_id,
-                    bot_key="mesta",
+                    bot_key="inventarizatsiya",
                     summary=summary,
                     day_iso=day,
                 )
@@ -105,9 +105,9 @@ async def main() -> None:
                     sent += 1
             await session.commit()
         if pending:
-            log.info("Mesta hub replay: %s/%s sessiya for %s", sent, len(pending), day)
+            log.info("Inventarizatsiya hub replay: %s/%s sessiya for %s", sent, len(pending), day)
     except Exception:
-        log.exception("mesta hub replay xato")
+        log.exception("inventarizatsiya hub replay xato")
 
     monitor_task = asyncio.create_task(run_norm_monitor(bot))
     try:

@@ -93,7 +93,7 @@ async def _reply_open_session(
 
     status = "⏸ pauzada" if ws.status == SessionStatus.paused else "▶️ ishlayapti"
     await message.answer(
-        f"⚠️ <b>Sizda ochiq mesta bor</b> ({status})\n\n"
+        f"⚠️ <b>Sizda ochiq inventarizatsiya bor</b> ({status})\n\n"
         f"Boshlangan: <b>{fmt_hm(ws.started_at)}</b>\n\n"
         "Davom eting, «Yakunlash» bosing yoki yangi ish uchun /start yuboring.",
         reply_markup=kb,
@@ -105,13 +105,13 @@ async def _push_hub(db: AsyncSession, *, tg_id: int, summary: str, session_id: i
 
     day = today_iso()
     await save_today_push(db, day=day, tg_id=tg_id, summary=summary)
-    ok, via = await push_to_yordamchi_hub(tg_id=tg_id, bot_key="mesta", summary=summary, day_iso=day)
+    ok, via = await push_to_yordamchi_hub(tg_id=tg_id, bot_key="inventarizatsiya", summary=summary, day_iso=day)
     if ok:
         if session_id:
             await mark_hub_pushed(db, session_id)
     else:
-        log.warning("mesta hub push failed uid=%s via=%s", tg_id, via)
-        push_to_yordamchi_hub_background(tg_id=tg_id, bot_key="mesta", summary=summary, day_iso=day)
+        log.warning("inventarizatsiya hub push failed uid=%s via=%s", tg_id, via)
+        push_to_yordamchi_hub_background(tg_id=tg_id, bot_key="inventarizatsiya", summary=summary, day_iso=day)
 
 
 @router.message(Command("start_mesta"))
@@ -222,8 +222,8 @@ async def finish_positions_invalid(message: Message) -> None:
 async def cmd_active(message: Message, db: AsyncSession) -> None:
     views = await list_active_sessions(db)
     if not views:
-        return await message.answer("Hozir mesta bilan ishlayotganlar yo'q.")
-    lines = ["<b>Hozir mesta bilan ishlayotganlar:</b>\n"]
+        return await message.answer("Hozir inventarizatsiya bilan ishlayotganlar yo'q.")
+    lines = ["<b>Hozir inventarizatsiya bilan ishlayotganlar:</b>\n"]
     for i, v in enumerate(views, 1):
         status = "⏸ pauza" if v.session.status == "paused" else "▶️ ish"
         lines.append(

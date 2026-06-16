@@ -1,1 +1,1 @@
-"""Mesta Nazorat Bot."""
+"""Inventarizatsiya Nazorat Bot."""

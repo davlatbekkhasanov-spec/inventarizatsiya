@@ -21,6 +21,6 @@ def compact_hub_summary(ws: WorkSession, norm: NormStatus) -> str:
     tejash = fmt_clock_from_seconds(saved_sec)
     bekor = fmt_clock_from_seconds(waste_sec)
     return (
-        f"Mesta: poz {ws.total_positions}, ish {ish}, dam {dam}, "
+        f"Inventarizatsiya: poz {ws.total_positions}, ish {ish}, dam {dam}, "
         f"tejash {tejash}, bekor {bekor}, kaizen {pts}"
     )

@@ -24,7 +24,7 @@ TG_EMPLOYEE: dict[int, str] = {
 
 
 def builtin_team_ids() -> frozenset[int]:
-    """Mesta botdan foydalanish huquqi."""
+    """Inventarizatsiya botdan foydalanish huquqi."""
     return frozenset(TG_EMPLOYEE.keys()) | BUILTIN_ADMIN_IDS
 
 

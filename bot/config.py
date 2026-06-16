@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     database_url: str = ""
     group_chat_id: int = 0
     admin_ids: str = ""
-    minutes_per_position: float = 3.0
+    minutes_per_position: float = 2.0
     monitor_interval_minutes: int = 15
     tz: str = "Asia/Tashkent"
 
