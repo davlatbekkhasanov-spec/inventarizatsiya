@@ -1,1 +1,1 @@
-"""Inventarizatsiya Nazorat Bot."""
+"""Inventarizatsiya Bot."""

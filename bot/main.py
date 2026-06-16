@@ -57,7 +57,7 @@ async def main() -> None:
     )
     me = await bot.get_me()
     log.info(
-        "Inventarizatsiya Nazorat Bot @%s | group=%s | norm=%s min/pos | admins=%s",
+        "Inventarizatsiya Bot @%s | group=%s | norm=%s min/pos | admins=%s",
         me.username,
         settings.effective_group_chat_id() or "—",
         settings.minutes_per_position,
