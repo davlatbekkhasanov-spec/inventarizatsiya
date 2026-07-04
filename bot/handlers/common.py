@@ -27,14 +27,16 @@ async def cmd_start(message: Message, bot: Bot, db: AsyncSession, state: FSMCont
     await state.clear()
 
     mpp = get_settings().minutes_per_position
+    mpp_prihod = get_settings().minutes_per_position_prihod
     await message.answer(
         "👋 <b>Hisobchi Bot</b>\n\n"
-        f"Inventarizatsiya — norma: <b>1 pozitsiya = {mpp:g} daqiqa</b>.\n\n"
+        f"📦 <b>Inventarizatsiya</b> — norma: <b>1 poz = {mpp:g} daqiqa</b>\n"
+        f"📥 <b>Prihod</b> — norma: <b>1 poz = {mpp_prihod:g} daqiqa</b>\n\n"
         "<b>Jarayon:</b>\n"
-        "▶️ Boshlash → onlayn sekundomer ishlaydi\n"
+        "▶️ Inventarizatsiya yoki ▶️ Prihodni boshlash\n"
         "⏸ Pauza → vaqt to'xtaydi\n"
         "🏁 Yakunlash → nechta pozitsiya qilganingizni kiriting\n\n"
-        "Har tejalgan 2 daqiqaga 1 ochko beriladi.\n\n"
+        "Har tejalgan norma vaqtiga 1 ochko beriladi.\n\n"
         "Admin: /stat_today · /stat_week · /stat_month",
         reply_markup=worker_idle_kb(),
     )
@@ -48,6 +50,6 @@ async def cmd_reset(message: Message, bot: Bot, db: AsyncSession, state: FSMCont
     await state.clear()
     extra = f" ({cleared} ta bekor qilindi)" if cleared else ""
     await message.answer(
-        f"🔄 Ochiq ishlar tozalandi{extra}. Endi «Boshlash» bosing.",
+        f"🔄 Ochiq ishlar tozalandi{extra}. Endi «Inventarizatsiya» yoki «Prihodni boshlash» bosing.",
         reply_markup=worker_idle_kb(),
     )
