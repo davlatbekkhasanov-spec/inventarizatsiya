@@ -20,7 +20,7 @@ def minutes_per_position(work_type: WorkType | str) -> float:
 
 def work_label(work_type: WorkType | str) -> str:
     if str(work_type) == WorkType.prihod:
-        return "prihod"
+        return "Prihod"
     return "inventarizatsiya"
 
 
@@ -32,7 +32,7 @@ def work_label_title(work_type: WorkType | str) -> str:
 
 def open_session_error(work_type: WorkType | str) -> str:
     if str(work_type) == WorkType.prihod:
-        return "Sizda ochiq prihod ishi bor. Avval yakunlang yoki davom eting."
+        return "Sizda ochiq Prihod ishi bor. Avval yakunlang yoki davom eting."
     return "Sizda ochiq inventarizatsiya bor. Avval yakunlang yoki davom eting."
 
 
@@ -47,14 +47,14 @@ def _he(name: str) -> str:
 def group_started_message(*, name: str, work_type: WorkType | str) -> str:
     safe = _he(name)
     if str(work_type) == WorkType.prihod:
-        return f"📥  <b>{safe}</b> prikhod qilishni boshladi"
+        return f"📥  <b>{safe}</b> Prihod qilishni boshladi"
     return f"🚛  <b>{safe}</b> inventarizatsiya ishlarini boshladi"
 
 
 def group_finished_message(*, name: str, work_type: WorkType | str) -> str:
     safe = _he(name)
     if str(work_type) == WorkType.prihod:
-        return f"🏁  <b>{safe}</b> prikhod qilishni yakunladi"
+        return f"🏁  <b>{safe}</b> Prihod qilishni yakunladi"
     return f"🏁  <b>{safe}</b> inventarizatsiya ishlarini yakunladi"
 
 
@@ -62,23 +62,23 @@ def timer_header(*, paused: bool, work_type: WorkType | str, pulse: str = "") ->
     if paused:
         return "⏸ <b>PAUZADA</b>"
     if str(work_type) == WorkType.prihod:
-        return f"{pulse} <b>PRIKHOD — ONLAYN SEKUNDOMER</b> {pulse}".strip()
+        return f"{pulse} <b>PRIHOD — ONLAYN SEKUNDOMER</b> {pulse}".strip()
     return f"{pulse} <b>INVENTARIZATSIYA — ONLAYN SEKUNDOMER</b> {pulse}".strip()
 
 
 def finish_title(work_type: WorkType | str) -> str:
     if str(work_type) == WorkType.prihod:
-        return "📊 <b>PRIKHOD YAKUNLANDI</b>"
+        return "📊 <b>PRIHOD YAKUNLANDI</b>"
     return "📊 <b>INVENTARIZATSIYA YAKUNLANDI</b>"
 
 
 def positions_question(work_type: WorkType | str) -> str:
     if str(work_type) == WorkType.prihod:
-        return "Nechta pozitsiya prihod qildingiz?"
+        return "Nechta pozitsiya Prihod qildingiz?"
     return "Nechta pozitsiya qildingiz?"
 
 
 def positions_unit(work_type: WorkType | str) -> str:
     if str(work_type) == WorkType.prihod:
-        return "pozitsiya prihod"
+        return "pozitsiya Prihod"
     return "pozitsiya"
